@@ -70,3 +70,4 @@ python -m tester.test
 
 The given arguments must be same as training. The results will be saved in *results* directory.
 
+* To estimate the sihouette score, use ```--silhouette-score-test```.
