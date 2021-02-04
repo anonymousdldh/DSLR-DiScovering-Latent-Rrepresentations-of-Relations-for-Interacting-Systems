@@ -11,7 +11,7 @@ This repo contains the code for **DiScovering Latent Rrepresentations of Relatio
 
 ## Data generation
 ### Physically simulated data
-We performed expriments with physics data with 7 combinations of 3 relations (spring, r_1, none). The list of datasets is can be found in *src/datasets_list.py*:
+We performed expriments with physics data with 7 combinations of 3 relations (spring, r_1, none). The list of datasets can be found in *src/datasets_list.py*:
 
 ```
 spring_None
