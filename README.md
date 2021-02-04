@@ -11,7 +11,7 @@ This repo contains the code for **DiScovering Latent Rrepresentations of Relatio
 
 ## Data generation
 ### Physically simulated data
-We performed expriments with physics data with 7 combinations of 3 relations (spring, r_1, none). The list of datasets is as following, and can be seen in *src/datasets_list.py*:
+We performed expriments with physics data with 7 combinations of 3 relations (spring, r_1, none). The list of datasets is can be found in *src/datasets_list.py*:
 
 ```
 spring_None
@@ -23,13 +23,13 @@ spring100
 spring100_r1100
 ```
 
-The details of each are explained in the experiment section in our paper. To generate the data:
+The details of each are explained in the experiments section in our paper. To generate the data:
 
 ```
 python data_generator.py --sim [name of data]
 ```
 
-For example, to generate *spring_None*, execute ```python data_generator.py --sim spring_None``` The generated data is in *data* directory.
+For example, to generate *spring_None* data, execute ```python data_generator.py --sim spring_None```. The data will be generated in *data* directory.
 
 ### CMU mocap data
 We have prepared the CMU mocap data for our model in advance that can be found in *data* directory. Details of CMU mocap data is on http://mocap.cs.cmu.edu/.
@@ -38,18 +38,28 @@ We have prepared the CMU mocap data for our model in advance that can be found i
 To train the model with physics data:
 
 ```
-python -m trainer.train --train_name [any name] --seed [seed] --dataset [data to use]
+python -m trainer.train --train_name [any name] --seed [seed] --dataset [data to use] --RPT --RST
 ```
 
-For example, to train the model with *spring_None* data, execute ```python -m trainer.train --train_name train0 --seed 0 --dataset spring_None```
+For example, to train the model with *spring_None* data, execute ```python -m trainer.train --train_name train0 --seed 0 --dataset spring_None --RPT --RST```.
 
 To train the model with CMU mocap data:
 
 ```
-python -m trainer.train --train_name [any name] --seed [seed] --dataset cmu_walking --connection-value --sparsity-prior 0.91 --batch-size 4 --epochs 2000 --gpu 1 --msg-dim 3 --n-relation-STD 1
+python -m trainer.train --train_name [any name] --seed [seed] --RPT --RST --dataset cmu_walking --connection-value --sparsity-prior 0.91 --batch-size 4 --epochs 2000 --gpu 1 --msg-dim 3 --n-relation-STD 1
 ```
 
-The model will be saved in *models* directory.
+The trained model will be saved in *models* directory.
+
+* To use random sampling trick, use ```--RST```.
+* To use reparameterization trick, use ```--RPT```.
+* To use connection value, use ```--connection-value```.
+* To use sparsity prior, use ```--sparsity-prior [sparsity (float)]```. Note: connection value must be activated to use sparsity prior.
+* To determine the batch size, use ```--batch-size [batch size]```.
+* To resume the training, use ```--load```.
+* To choose the gpu to use, add ```--gpu [gpu number]```.
+
+Please refer the code for more details.
 
 ## Test
 To test the model:
