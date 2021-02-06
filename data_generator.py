@@ -7,6 +7,12 @@ from matplotlib import pyplot as plt
 
 sim_list = {
   'spring_None':2,
+  'r1_None':2,
+  'spring_r1':2,
+  'spring_r1_None':3,
+  'spring4':4,
+  'spring100':100,
+  'spring100_r1100':200,
 }
 
 # dataset parameters

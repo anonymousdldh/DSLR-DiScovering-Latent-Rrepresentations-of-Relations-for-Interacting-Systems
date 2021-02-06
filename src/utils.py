@@ -82,6 +82,7 @@ def loss_visualization(train_name, data_name):
     plt.ylabel('loss')
     plt.legend()
     plt.savefig(path + '/loss.png')
+    return np.min(test_loss)
 
 def get_edge_index(n, sim):
     adj = (np.ones((n, n)) - np.eye(n)).astype(int)
@@ -101,7 +102,7 @@ def train_data_load(args, data_params):
     t_max_see = args.t_max_see
     batch = args.batch_size
 
-    data_name = "r%d_o%d_tseen%d_ns%d_dim%d_nt%d_dt%.3f_%s"%(nr,n,t_seen,ns,dim,nt,dt,sim)
+    data_name = "r%d_o%d_tseen%d_ns%d_dim%d_nt%d_dt%g_%s"%(nr,n,t_seen,ns,dim,nt,dt,sim)
     load = np.load('./data/%s.npz'%data_name)
     data = load['data']
     data_valid = load['data_valid']
@@ -201,7 +202,7 @@ def test_data_load(args, data_params):
     t_max_see = args.t_max_see
     batch = args.batch_size
 
-    data_name = "r%d_o%d_tseen%d_ns%d_dim%d_nt%d_dt%.3f_%s"%(nr,n,t_seen,ns,dim,nt,dt,sim)
+    data_name = "r%d_o%d_tseen%d_ns%d_dim%d_nt%d_dt%g_%s"%(nr,n,t_seen,ns,dim,nt,dt,sim)
     load = np.load('./data/%s.npz'%data_name)
     data = load['data']
     data_test = load['data_test']

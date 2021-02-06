@@ -33,9 +33,9 @@ parser.add_argument('--batch-size', type=int, default=1, help='Batch size.')
 parser.add_argument('--seed', type=int, default=0, help='Random seed.')
 parser.add_argument('--gpu', type=int, default=0, help='ID of GPU to use.')
 
-parser.add_argument('--RPT', action='store_true', default=True,
+parser.add_argument('--RPT', action='store_true', default=False,
                     help='If set to False, we do not use reparameterization trick in relation decoder.')
-parser.add_argument('--RST', action='store_true', default=True,
+parser.add_argument('--RST', action='store_true', default=False,
                     help='If set to False, we do not use random sampling trick in relation decoder.')
 parser.add_argument('--video-save', action='store_true', default=False,
                     help='Generate simulation video or not.')
@@ -83,7 +83,10 @@ nr = data_params['nr']
 t_max_see = args.t_max_see
 t_seen_interval = args.t_seen_interval
 
-length_of_tails = 75
+if args.cmu:
+    length_of_tails = 1
+else:
+    length_of_tails = 75
 steps = 49
 
 def simulate(y):
@@ -265,7 +268,7 @@ def main():
         sil = []
         if args.silhouette_score_test:
             print('silhouette score test...')
-            for k in range(2, 0):
+            for k in range(2, 6):
               kmeans = KMeans(n_clusters = k, init="random", n_init=10, max_iter=100, random_state=6).fit(total_relations_training)
               labels = kmeans.labels_
               sil.append(silhouette_score(total_relations_training, labels, metric = 'euclidean'))

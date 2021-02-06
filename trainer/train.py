@@ -19,10 +19,6 @@ parser.add_argument('--dataset', type=str, default='spring_None',
                     help='Select dataset to train with.')
 parser.add_argument('--t-seen-interval', type=int, default=1, help='The interval between timesteps for inferring relation staes. Lower the lower memory, higher the higher accuracy.')
 parser.add_argument('--t-max-see', type=int, default=49, help='How many time-steps to watch for inferring relations states')
-parser.add_argument('--augment', action='store_true', default=False,
-                    help='If or not to augment data during training.')
-parser.add_argument('--connection-value', action='store_true', default=False,
-                    help='If or not to use connection value.')
 parser.add_argument('--sparsity-prior', type=float, default=0.0,
                     help='Sparsity prior given to DSLR. It is valid only if connection value is used. If sparsity prior set to 0.0, sparsity prior will be not used.')
 parser.add_argument('--n-relation-STD', type=int, default=5, help='The number of relation states used for relation standard deviation loss. If set to 1, relation standard deviation loss will not be used.')
@@ -33,15 +29,19 @@ parser.add_argument('--gpu', type=int, default=0, help='ID of GPU to use.')
 parser.add_argument('--epochs', type=int, default=1000, help='Total training epochs.')
 parser.add_argument('--test_per_epochs', type=int, default=1, help='How frequently test during training.')
 parser.add_argument('--msg-dim', type=int, default=100, help='Dimension of message vector of relation decoder.')
+
 parser.add_argument('--load', action='store_true', default=False,
                     help='Load or train from scratch.')
 parser.add_argument('--test', action='store_true', default=False,
                     help='Set False for training.')
-
-parser.add_argument('--RPT', action='store_true', default=True,
+parser.add_argument('--RPT', action='store_true', default=False,
                     help='If set to False, we do not use reparameterization trick in relation decoder.')
-parser.add_argument('--RST', action='store_true', default=True,
+parser.add_argument('--RST', action='store_true', default=False,
                     help='If set to False, we do not use random sampling trick in relation decoder.')
+parser.add_argument('--augment', action='store_true', default=False,
+                    help='If or not to augment data during training.')
+parser.add_argument('--connection-value', action='store_true', default=False,
+                    help='If or not to use connection value.')
 args = parser.parse_args()
 
 train_name = dir_naming(args)
@@ -56,7 +56,7 @@ hidden = 256#128 # 300
 test = '_l1_'
 n_f = data_params['dim'] * 2
 dim = n_f
-n_r_f = 128 # 300 # relation latent state의 dimension
+n_r_f = 256 # 300 # relation latent state의 dimension
 n_fr_f = 10
 
 # training parameters
@@ -87,6 +87,9 @@ def main():
     ogn, rogn, opt, ropt, sched, rsched, total_epochs, batch_per_epoch = model_load(trainloader, n_f, n_r_f, n_fr_f, msg_dim, hidden, aggr, init_lr, args, data_params)
     if args.load:
         ogn, rogn = test_model_load(n_f, n_r_f, n_fr_f, msg_dim, hidden, aggr, train_name, data_name, args, data_params)
+        min_loss = loss_visualization(train_name, data_name)
+    else:
+        min_loss = None
 
 
 
@@ -94,7 +97,6 @@ def main():
     print('batch_size: ', batch)
 
     # train
-    min_loss = None
     for epoch in tqdm(range(0, total_epochs)):
         ogn.cuda()
         rogn.cuda()

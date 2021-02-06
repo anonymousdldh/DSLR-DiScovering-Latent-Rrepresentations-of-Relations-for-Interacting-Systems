@@ -35,12 +35,31 @@ def get_potential(sim, sim_obj):
       #Prevent singularities:
 
       min_dist = 1e-2
-      # r2, charge
       bounded_dist = dist + min_dist
     #   test_dist(jax.device_get(np.sum(np.any(dist <= min_dist))))
       rn = ((x1[-2] * x2[-2]) * 10000).astype(int)
 
       if sim == 'spring_None':
+          potential = (bounded_dist - 1)**2 * (rn % 2 == 0)
+          return potential
+      elif sim == 'r1_None':
+          potential = x1[-1]*x2[-1]*np.log(bounded_dist) * (rn % 2 == 0)
+          return potential
+      elif sim == 'spring_r1':
+          potential = (bounded_dist - 1)**2 * (rn % 2 == 0) + \
+                        x1[-1]*x2[-1]*np.log(bounded_dist) * (rn % 2 == 1)
+          return potential
+      elif sim == 'spring_r1_None':
+          potential = (bounded_dist - 1)**2 * (rn % 3 == 0) + \
+                        x1[-1]*x2[-1]*np.log(bounded_dist) * (rn % 3 == 1)
+          return potential
+      elif sim == 'spring4':
+          potential = (bounded_dist - 1)**2 * (rn % 4) / 4
+          return potential
+      elif sim == 'spring100':
+          potential = (bounded_dist - 1)**2 * (rn % 100) * 0.03
+          return potential
+      elif sim == 'spring100_r1100':
           potential = (bounded_dist - 1)**2 * (rn % 2 == 0)
           return potential
       else:
