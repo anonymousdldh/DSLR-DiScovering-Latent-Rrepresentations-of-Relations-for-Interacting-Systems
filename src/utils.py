@@ -258,7 +258,7 @@ def test_model_load(n_f, n_r_f, n_fr_f, msg_dim, hidden, aggr, train_name, data_
 
     path = './models/%s/%s'%(train_name, data_name)
     ogn = OGN(n_f, n_r_f, n_fr_f, msg_dim, dim, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr, sparsity_mode = sparsity_mode, sparsity_prior = sparsity_prior, test = args.test).cuda()
-    rogn = ROGN(n_f, n_r_f, msg_dim, dim, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr).cuda()
+    rogn = ROGN(n_f, n_r_f, n_fr_f, msg_dim, dim, sparsity_mode, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr, test = args.test).cuda()
 
     ogn.load_state_dict(torch.load(path + '/decoder.pth'))
     rogn.load_state_dict(torch.load(path + '/encoder.pth'))
@@ -270,10 +270,10 @@ def model_load(trainloader, n_f, n_r_f, n_fr_f, msg_dim, hidden, aggr, init_lr, 
     sim = data_params['sim']
     sparsity_mode = args.connection_value
     sparsity_prior = args.sparsity_prior
-    total_epochs = args.epochs
+    total_epochs = 2000#args.epochs
 
     ogn = OGN(n_f, n_r_f, n_fr_f, msg_dim, dim, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr, sparsity_mode = sparsity_mode, sparsity_prior = sparsity_prior, test = args.test).cuda()
-    rogn = ROGN(n_f, n_r_f, msg_dim, dim, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr).cuda()
+    rogn = ROGN(n_f, n_r_f, n_fr_f, msg_dim, dim, sparsity_mode, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr).cuda()
 
     opt = torch.optim.Adam(ogn.parameters(), lr=init_lr, weight_decay=1e-8)
     ropt = torch.optim.Adam(rogn.parameters(), lr=init_lr, weight_decay=1e-8)
@@ -400,7 +400,6 @@ def video_generate_2d(train_name, data_name, i, ogn, rogn, x, e, steps, args, da
     camera = Camera(fig)
 
     # relation reasoning
-    rogn.before_messages = None
     x_relation = x[:, :t_max_see:t_seen_interval, :]
     x_relation = x_relation.reshape([x_relation.shape[0],-1])
     x_relation = torch.from_numpy(x_relation).cuda()
@@ -409,7 +408,8 @@ def video_generate_2d(train_name, data_name, i, ogn, rogn, x, e, steps, args, da
         edge_index=e
     )
     rogn.just_derivative(x_relation, x_relation.x)
-    ogn.before_messages = rogn.relation
+    ogn.relation = rogn.relation
+    ogn.c = rogn.c
 
     times = np.arange(int(steps//step_size))
     times = times/len(times)

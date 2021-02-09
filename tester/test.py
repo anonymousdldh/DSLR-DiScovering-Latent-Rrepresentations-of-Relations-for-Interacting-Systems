@@ -163,20 +163,13 @@ def main():
         )
         rogn.just_derivative(x, x.x)
 
-        ogn.before_messages = rogn.relation
-        x = torch.from_numpy(x_test[:, -n_f:]).cuda()
-        x = Data(
-          x=x,
-          edge_index=e
-        )
-        ogn.just_derivative(x, x.x)
         real_r = []
         for edge in range(len(e[0])):
             r_num1 = x_relation[e[0][edge]]
             r_num2 = x_relation[e[1][edge]]
             rn = int((r_num1 * r_num2) * 10000)
             real_r.append([rn])
-        relations_training.append([ogn.mean.detach(), real_r])
+        relations_training.append([rogn.mean.detach(), real_r])
 
     # Get relation states in test data
     for i in range(len(data_test)):
@@ -197,7 +190,7 @@ def main():
         )
         rogn.just_derivative(x, x.x)
 
-        ogn.before_messages = rogn.relation
+        ogn.relation = rogn.relation
         x = torch.from_numpy(x_test[:, -n_f:]).cuda()
         x = Data(
           x=x,
@@ -210,7 +203,7 @@ def main():
             r_num2 = x_relation[e[1][edge]]
             rn = int((r_num1 * r_num2) * 10000)
             real_r.append([rn])
-        relations_test.append([ogn.mean.detach(), real_r])
+        relations_test.append([rogn.mean.detach(), real_r])
 
         connection_values_test.append(ogn.c.detach())
 

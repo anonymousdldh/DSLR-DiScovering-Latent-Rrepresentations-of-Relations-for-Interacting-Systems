@@ -27,9 +27,7 @@ class GN(MessagePassing):
         self.sparsity_mode = sparsity_mode
         self.sparsity_prior = sparsity_prior
         self.test = test
-        self.KL_eps = 1
-        if test:
-            self.KL_eps = 0
+
 
         self.msg_fnc = Seq(
             Lin(2*n_f+n_fr_f, hidden),
@@ -51,28 +49,6 @@ class GN(MessagePassing):
             Lin(hidden, ndim)
         )
 
-        if self.sparsity_mode:
-            n_fr_f += 1
-
-        self.relation_mean_fnc = Seq(
-            Lin(n_r_f, hidden),
-            ReLU(),
-            Lin(hidden, hidden),
-            ReLU(),
-            Lin(hidden, hidden),
-            ReLU(),
-            Lin(hidden, n_fr_f),
-        )
-
-        self.relation_logvar_fnc = Seq(
-            Lin(n_r_f, hidden),
-            ReLU(),
-            Lin(hidden, hidden),
-            ReLU(),
-            Lin(hidden, hidden),
-            ReLU(),
-            Lin(hidden, n_fr_f),
-        )
 
     #[docs]
     def forward(self, x, edge_index):
@@ -83,25 +59,9 @@ class GN(MessagePassing):
     def message(self, x_i, x_j):
         # x_i has shape [n_e, n_f]
         tmp = torch.cat([x_i, x_j], dim=1)
-        self.before_messages = self.before_messages.cuda()
-        self.mean = self.relation_mean_fnc(self.before_messages)
-        #'''
-        self.logvar = self.relation_logvar_fnc(self.before_messages)
-        self.std = torch.exp(0.5*self.logvar) #* 0.1
-        self.eps = torch.randn_like(self.std).cuda() * self.KL_eps
-        self.relation = self.mean + self.std * self.eps
-
-        self.c = self.mean[:, -1]
 
         if self.sparsity_mode:
-            self.relation = self.relation[:, :-1]
-            self.mean = self.mean[:,:-1]
-            self.std = self.std[:,:-1]
-            self.logvar = self.logvar[:, :-1]
-
-            self.c = torch.sigmoid(self.c)
             self.c_sort = self.c.sort(descending = True).values
-
             self.c = self.c.reshape([-1,1])
             self.eps_c = torch.randn_like(self.c).cuda()
         tmp = tmp.cuda()
@@ -124,7 +84,8 @@ class OGN(GN):
         super(OGN, self).__init__(n_f, n_r_f, n_fr_f, msg_dim, ndim, hidden=hidden, aggr=aggr, sparsity_mode = sparsity_mode, sparsity_prior = sparsity_prior, test = test)
         self.edge_index = edge_index
         self.ndim = ndim
-        self.before_messages = None
+        self.relation = None
+        self.c = None
 
     def just_derivative(self, g, x, augment=False, augmentation=3):
         #x is [n, n_f]f
@@ -149,13 +110,41 @@ class OGN(GN):
 
 # Relation
 class RGN(MessagePassing):
-    def __init__(self, n_f, n_r_f, msg_dim, ndim, hidden=300, aggr='add'):
+    def __init__(self, n_f, n_r_f, n_fr_f, msg_dim, ndim, sparsity_mode, hidden=300, aggr='add', test = False):
         super(RGN, self).__init__(aggr=aggr)  # "Add" aggregation.
         self.n_f = n_f
         self.n_r_f = n_r_f
         self.relation_fnc_n_layers = 4
+        self.n_fr_f = n_fr_f
+        self.sparsity_mode = sparsity_mode
+        self.KL_eps = 1
+        if test:
+            self.KL_eps = 0
+
+        if self.sparsity_mode:
+            n_fr_f += 1
 
         self.relation_fnc = GRU(input_size = 2*n_f, hidden_size = n_r_f, num_layers = self.relation_fnc_n_layers, batch_first=True, dropout = 0.0)
+
+        self.relation_mean_fnc = Seq(
+            Lin(n_r_f, hidden),
+            ReLU(),
+            Lin(hidden, hidden),
+            ReLU(),
+            Lin(hidden, hidden),
+            ReLU(),
+            Lin(hidden, n_fr_f),
+        )
+
+        self.relation_logvar_fnc = Seq(
+            Lin(n_r_f, hidden),
+            ReLU(),
+            Lin(hidden, hidden),
+            ReLU(),
+            Lin(hidden, hidden),
+            ReLU(),
+            Lin(hidden, n_fr_f),
+        )
 
     #[docs]
     def forward(self, x, edge_index):
@@ -168,14 +157,29 @@ class RGN(MessagePassing):
         x_i = x_i.reshape(x_i.shape[0], -1, self.n_f)
         x_j = x_j.reshape(x_i.shape[0], -1, self.n_f)
         tmp = torch.cat([x_i, x_j], dim= -1)
-        if type(self.before_messages) == type(None):
-          self.before_messages = torch.zeros_like(torch.empty([self.relation_fnc_n_layers, tmp.shape[0],self.n_r_f])).cuda()
+        self.before_messages = torch.zeros_like(torch.empty([self.relation_fnc_n_layers, tmp.shape[0],self.n_r_f])).cuda()
         tmp = tmp.cuda()
         #ret = self.msg_fnc(tmp)
         #ret = ret.view(ret.shape[0], 1, ret.shape[1])
         self.before_messages = self.before_messages.cuda()
-        self.relation, self.before_messages = self.relation_fnc(tmp, self.before_messages)
-        self.relation = self.relation[:,-1,:]
+        self.edge_state, self.before_messages = self.relation_fnc(tmp, self.before_messages)
+        self.edge_state = self.edge_state[:,-1,:]
+
+        self.mean = self.relation_mean_fnc(self.edge_state)
+        self.logvar = self.relation_logvar_fnc(self.edge_state)
+        self.std = torch.exp(0.5*self.logvar)
+        self.eps = torch.randn_like(self.std).cuda() * self.KL_eps
+        self.c = self.mean[:, -1]
+
+        self.relation = self.mean + self.std * self.eps
+
+        if self.sparsity_mode:
+            self.relation = self.relation[:, :-1]
+            self.mean = self.mean[:,:-1]
+            self.std = self.std[:,:-1]
+            self.logvar = self.logvar[:, :-1]
+            self.c = torch.sigmoid(self.c)
+
         return self.relation
 
     def update(self, aggr_out, x=None):
@@ -183,12 +187,11 @@ class RGN(MessagePassing):
         return None
 
 class ROGN(RGN):
-    def __init__(self, n_f, n_r_f, msg_dim, ndim, edge_index, aggr='add', hidden=300, nt=1):
+    def __init__(self, n_f, n_r_f, n_fr_f, msg_dim, ndim, sparsity_mode, edge_index, aggr='add', test = False, hidden=300, nt=1):
 
-        super(ROGN, self).__init__(n_f, n_r_f, msg_dim, ndim, hidden=hidden, aggr=aggr)
+        super(ROGN, self).__init__(n_f, n_r_f, n_fr_f, msg_dim, ndim, sparsity_mode, hidden=hidden, aggr=aggr, test = test)
         self.edge_index = edge_index
         self.ndim = ndim
-        self.before_messages = None
         self.relation = None
 
     def just_derivative(self, g, x, augmentation=3, augment = False):

@@ -42,6 +42,8 @@ parser.add_argument('--augment', action='store_true', default=False,
                     help='If or not to augment data during training.')
 parser.add_argument('--connection-value', action='store_true', default=False,
                     help='If or not to use connection value.')
+parser.add_argument('--use-valid', action='store_true', default=False,
+                    help='Use validation set, and save the model with lowest valid loss.')
 args = parser.parse_args()
 
 train_name = dir_naming(args)
@@ -56,7 +58,7 @@ hidden = 256#128 # 300
 test = '_l1_'
 n_f = data_params['dim'] * 2
 dim = n_f
-n_r_f = 256 # 300 # relation latent state의 dimension
+n_r_f = 128 # 300 # relation latent state의 dimension
 n_fr_f = 10
 
 # training parameters
@@ -114,9 +116,6 @@ def main():
             ropt.zero_grad()
 
             relations = []
-            NP_loss = 0.0
-            KL_loss = 0.0
-            c_loss = 0.0
             for t in range(args.n_relation_STD):
                 ginput.x = ginput.x.cuda()
                 ginput.y = ginput.y.cuda()
@@ -128,39 +127,34 @@ def main():
                 else:
                     t_seen_start = 0
 
-                rogn.before_messages = None
                 x = ginput.x.reshape([ginput.x.shape[0], -1, n_f])
                 x = x[:, t_seen_start: (t_seen_start + t_max_see):t_seen_interval, :]
                 x = x.reshape([x.shape[0],-1])
                 rogn.just_derivative(ginput, x, augment = augment)
-                edge_state = rogn.relation
-
-                ogn.before_messages = edge_state
-                if args.RST:
-                    t_seen_random = np.random.randint(1, t_seen + 1 - args.n_decoder)
-                else:
-                    t_seen_random = t_max_see
-                x = ginput.x[:,n_f * (t_seen_random-1):n_f * (t_seen_random)]
-                NP_loss += get_NP_loss(ogn, ginput, x, dt = dt, t_interval = t_interval, n_decoder = args.n_decoder,
-                                t = t_seen_random-1,
-                                comparative_before_messages = None, dim = dim, augment = augment)
-                relation_state = ogn.relation
+                relation_state = rogn.relation
                 relations.append(relation_state.reshape(relation_state.shape[0], relation_state.shape[1], 1))
 
-                KL_loss += (-0.5 * torch.sum(1 + ogn.logvar - ogn.mean.pow(2) - ogn.logvar.exp()))
+            ogn.relation = relation_state
+            ogn.c = rogn.c
+            if args.RST:
+                t_seen_random = np.random.randint(1, t_seen + 1 - args.n_decoder)
+            else:
+                t_seen_random = t_max_see
+            x = ginput.x[:,n_f * (t_seen_random-1):n_f * (t_seen_random)]
+            NP_loss = get_NP_loss(ogn, ginput, x, dt = dt, t_interval = t_interval, n_decoder = args.n_decoder,
+                            t = t_seen_random-1,
+                            comparative_before_messages = None, dim = dim, augment = augment)
 
-                #batch_loss += ( loss + KL_loss * (1e-1) )
+            KL_loss = (-0.5 * torch.sum(1 + rogn.logvar - rogn.mean.pow(2) - rogn.logvar.exp()))
+            if args.connection_value:
+                if args.sparsity_prior == 0:
+                    c_loss = torch.sum(- torch.log(ogn.c_sort + eps))
+                else:
+                    c_loss = torch.sum(- torch.log(ogn.c_sort[: int(len(ogn.c_sort) * args.sparsity_prior)] + eps))
+                    c_loss += torch.sum(- torch.log(1 - ogn.c_sort[int(len(ogn.c_sort) * args.sparsity_prior):] + eps) )
+            else:
+                c_loss = 0
 
-                if args.connection_value:
-                    if args.sparsity_prior == 0:
-                        c_loss += torch.sum(- torch.log(ogn.c_sort + eps))
-                    else:
-                        c_loss += torch.sum(- torch.log(ogn.c_sort[: int(len(ogn.c_sort) * args.sparsity_prior)] + eps))
-                        c_loss += torch.sum(- torch.log(1 - ogn.c_sort[int(len(ogn.c_sort) * args.sparsity_prior):] + eps) )
-
-            NP_loss /= args.n_relation_STD
-            KL_loss /= args.n_relation_STD
-            c_loss /= args.n_relation_STD
             if args.n_relation_STD >= 2:
                 SD_loss = torch.sum(torch.std(torch.cat(relations)))
             else:
@@ -201,13 +195,14 @@ def main():
                 ginput.y = ginput.y.cuda()
                 ginput.edge_index = ginput.edge_index.cuda()
                 ginput.batch = ginput.batch.cuda()
-                rogn.before_messages = None
+
                 x = ginput.x.reshape([ginput.x.shape[0], -1, n_f])
                 x = x[:, : t_max_see: t_seen_interval, :]
                 x = x.reshape([x.shape[0],-1])
                 rogn.just_derivative(ginput, x)
 
-                ogn.before_messages = rogn.relation
+                ogn.relation = rogn.relation
+                ogn.c = rogn.c
                 x = ginput.x[:, -2 * n_f : -n_f]
 
                 NP_loss = get_NP_loss(ogn, ginput, x, n_decoder = args.n_decoder, dim=dim, test = True, dt = dt,
@@ -219,14 +214,18 @@ def main():
 
             test_NP_loss = test_NP_loss/num_items
 
-            if not min_loss or test_NP_loss < min_loss:
-                print('Lowest valid loss. Save model.')
-                min_loss = test_NP_loss
-                ogn.cpu()
-                rogn.cpu()
+            if args.use_valid:
+                if not min_loss or test_NP_loss < min_loss:
+                    print('Lowest valid loss. Save model.')
+                    min_loss = test_NP_loss
+                    ogn.cpu()
+                    rogn.cpu()
+                    model_save(ogn.state_dict(), rogn.state_dict(), train_name, data_name)
+            else:
                 model_save(ogn.state_dict(), rogn.state_dict(), train_name, data_name)
         else:
             test_NP_loss = None
+
         loss_save(epoch, train_name, data_name, {'train_loss':train_NP_loss, 'test_loss':test_NP_loss})
 
 if __name__ == '__main__':
