@@ -38,7 +38,7 @@ We have prepared the CMU mocap data for our model in advance that can be found i
 To train the model with physics data:
 
 ```
-python -m trainer.train --train_name [any name] --seed [seed] --dataset [data to use] --RPT --RST
+python -m trainer.train --train_name [any name] --seed [seed] --dataset [data to use] --RPT --RST --use-valid
 ```
 
 For example, to train the model with *spring_None* data, execute ```python -m trainer.train --train_name train0 --seed 0 --dataset spring_None --RPT --RST```.
