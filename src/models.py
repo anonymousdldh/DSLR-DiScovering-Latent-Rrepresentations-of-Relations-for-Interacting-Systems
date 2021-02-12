@@ -28,7 +28,6 @@ class GN(MessagePassing):
         self.sparsity_prior = sparsity_prior
         self.test = test
 
-
         self.msg_fnc = Seq(
             Lin(2*n_f+n_fr_f, hidden),
             ReLU(),

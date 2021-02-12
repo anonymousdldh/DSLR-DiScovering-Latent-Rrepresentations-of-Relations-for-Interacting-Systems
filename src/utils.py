@@ -99,7 +99,6 @@ def train_data_load(args, data_params):
     dt = data_params['dt']
     sim = data_params['sim']
     t_interval = data_params['t_interval']
-    t_max_see = args.t_max_see
     batch = args.batch_size
 
     data_name = "r%d_o%d_tseen%d_ns%d_dim%d_nt%d_dt%g_%s"%(nr,n,t_seen,ns,dim,nt,dt,sim)
@@ -199,7 +198,6 @@ def test_data_load(args, data_params):
     dt = data_params['dt']
     sim = data_params['sim']
     t_interval = data_params['t_interval']
-    t_max_see = args.t_max_see
     batch = args.batch_size
 
     data_name = "r%d_o%d_tseen%d_ns%d_dim%d_nt%d_dt%g_%s"%(nr,n,t_seen,ns,dim,nt,dt,sim)
@@ -270,7 +268,7 @@ def model_load(trainloader, n_f, n_r_f, n_fr_f, msg_dim, hidden, aggr, init_lr, 
     sim = data_params['sim']
     sparsity_mode = args.connection_value
     sparsity_prior = args.sparsity_prior
-    total_epochs = 2000#args.epochs
+    total_epochs = args.epochs
 
     ogn = OGN(n_f, n_r_f, n_fr_f, msg_dim, dim, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr, sparsity_mode = sparsity_mode, sparsity_prior = sparsity_prior, test = args.test).cuda()
     rogn = ROGN(n_f, n_r_f, n_fr_f, msg_dim, dim, sparsity_mode, hidden=hidden, edge_index=get_edge_index(n, sim), aggr=aggr).cuda()

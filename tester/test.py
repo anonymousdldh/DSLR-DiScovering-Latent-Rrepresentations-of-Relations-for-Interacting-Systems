@@ -314,12 +314,12 @@ def main():
         if args.cmu:
             cs_color = np.concatenate([total_connection_values_test**0.5, total_connection_values_test*0, 1-total_connection_values_test**0.5], axis=-1)
             scatter = plt.scatter(pca_c[cur_i:next_i,0][:args.n_represent],pca_c[cur_i:next_i,1][:args.n_represent], c= cs_color[:args.n_represent], s= 1, alpha = 0.1)
-        elif data_params['sim'] == 'spring_continuous':
+        elif data_params['sim'] == 'spring100':
             scatter = plt.scatter(pca_c[cur_i:next_i,0][:args.n_represent],pca_c[cur_i:next_i,1][:args.n_represent], c= [[1. * n_r / 100, 0, 1. * (100 - n_r) / 100]]*min(next_i - cur_i, args.n_represent), s= 1,
             alpha = 0.1)
-        elif data_params['sim'] == 'spring_r1_continuous':
+        elif data_params['sim'] == 'spring100_r1100':
             scatter = plt.scatter(pca_c[cur_i:next_i,0][:args.n_represent],pca_c[cur_i:next_i,1][:args.n_represent],
-            c= [[1. * n_r * (n_r < 50) / 50,  1. * (n_r - 50) * (n_r >= 50) / 50, 1. - 1. * n_r * (n_r < 50) / 50 - 1. * (n_r - 50) * (n_r >= 50) / 50,]]*min(next_i - cur_i, args.n_represent), s= 1,
+            c= [[1. * n_r * (n_r < 100) / 100,  1. * (n_r - 100) * (n_r >= 100) / 100, 1. - 1. * n_r * (n_r < 100) / 100 - 1. * (n_r - 100) * (n_r >= 100) / 100,]]*min(next_i - cur_i, args.n_represent), s= 1,
             alpha = 0.1)
         else:
             scatter = plt.scatter(pca_c[cur_i:next_i,0][:args.n_represent],pca_c[cur_i:next_i,1][:args.n_represent], c= colors[n_r][:args.n_represent], s= 0.1)

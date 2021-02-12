@@ -116,6 +116,9 @@ def main():
             ropt.zero_grad()
 
             relations = []
+            NP_loss = 0
+            KL_loss = 0
+            c_loss = 0
             for t in range(args.n_relation_STD):
                 ginput.x = ginput.x.cuda()
                 ginput.y = ginput.y.cuda()
@@ -134,27 +137,28 @@ def main():
                 relation_state = rogn.relation
                 relations.append(relation_state.reshape(relation_state.shape[0], relation_state.shape[1], 1))
 
-            ogn.relation = relation_state
-            ogn.c = rogn.c
-            if args.RST:
-                t_seen_random = np.random.randint(1, t_seen + 1 - args.n_decoder)
-            else:
-                t_seen_random = t_max_see
-            x = ginput.x[:,n_f * (t_seen_random-1):n_f * (t_seen_random)]
-            NP_loss = get_NP_loss(ogn, ginput, x, dt = dt, t_interval = t_interval, n_decoder = args.n_decoder,
-                            t = t_seen_random-1,
-                            comparative_before_messages = None, dim = dim, augment = augment)
-
-            KL_loss = (-0.5 * torch.sum(1 + rogn.logvar - rogn.mean.pow(2) - rogn.logvar.exp()))
-            if args.connection_value:
-                if args.sparsity_prior == 0:
-                    c_loss = torch.sum(- torch.log(ogn.c_sort + eps))
+                ogn.relation = relation_state
+                ogn.c = rogn.c
+                if args.RST:
+                    t_seen_random = np.random.randint(1, t_seen + 1 - args.n_decoder)
                 else:
-                    c_loss = torch.sum(- torch.log(ogn.c_sort[: int(len(ogn.c_sort) * args.sparsity_prior)] + eps))
-                    c_loss += torch.sum(- torch.log(1 - ogn.c_sort[int(len(ogn.c_sort) * args.sparsity_prior):] + eps) )
-            else:
-                c_loss = 0
+                    t_seen_random = t_max_see
+                x = ginput.x[:,n_f * (t_seen_random-1):n_f * (t_seen_random)]
+                NP_loss += get_NP_loss(ogn, ginput, x, dt = dt, t_interval = t_interval, n_decoder = args.n_decoder,
+                                t = t_seen_random-1,
+                                comparative_before_messages = None, dim = dim, augment = augment)
 
+                KL_loss += (-0.5 * torch.sum(1 + rogn.logvar - rogn.mean.pow(2) - rogn.logvar.exp()))
+                if args.connection_value:
+                    if args.sparsity_prior == 0:
+                        c_loss += torch.sum(- torch.log(ogn.c_sort + eps))
+                    else:
+                        c_loss += torch.sum(- torch.log(ogn.c_sort[: int(len(ogn.c_sort) * args.sparsity_prior)] + eps))
+                        c_loss += torch.sum(- torch.log(1 - ogn.c_sort[int(len(ogn.c_sort) * args.sparsity_prior):] + eps) )
+
+            NP_loss /= args.n_relation_STD
+            KL_loss /= args.n_relation_STD
+            c_loss /= args.n_relation_STD
             if args.n_relation_STD >= 2:
                 SD_loss = torch.sum(torch.std(torch.cat(relations)))
             else:

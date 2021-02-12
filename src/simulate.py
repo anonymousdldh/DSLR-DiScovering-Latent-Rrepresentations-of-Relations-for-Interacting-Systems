@@ -46,8 +46,8 @@ def get_potential(sim, sim_obj):
           potential = x1[-1]*x2[-1]*np.log(bounded_dist) * (rn % 2 == 0)
           return potential
       elif sim == 'spring_r1':
-          potential = (bounded_dist - 1)**2 * (rn % 2 == 0) + \
-                        x1[-1]*x2[-1]*np.log(bounded_dist) * (rn % 2 == 1)
+          potential = x1[-1]*x2[-1]*np.log(bounded_dist) * (rn % 2 == 0) + \
+                        (bounded_dist - 1)**2 * (rn % 2 == 1)
           return potential
       elif sim == 'spring_r1_None':
           potential = (bounded_dist - 1)**2 * (rn % 3 == 0) + \
@@ -60,7 +60,9 @@ def get_potential(sim, sim_obj):
           potential = (bounded_dist - 1)**2 * (rn % 100) * 0.03
           return potential
       elif sim == 'spring100_r1100':
-          potential = (bounded_dist - 1)**2 * (rn % 2 == 0)
+          r_value = rn % 200
+          potential = (bounded_dist - 1)**2 * r_value * 0.03 * (r_value < 100) + \
+                    x1[-1]*x2[-1]*np.log(bounded_dist) * ( (r_value - 100) * 0.03)  * (r_value >= 100)
           return potential
       else:
           raise NotImplementedError('No such simulation ' + str(sim))

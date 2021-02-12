@@ -22,7 +22,7 @@ parser.add_argument('--t-interval', type=int, default=5, help='Time interval per
 parser.add_argument('--ns', type=int, default=50000, help='Number of simulations to run')
 parser.add_argument('--n', type=int, default=5, help='Number of nodes')
 parser.add_argument('--dim', type=int, default=2, help='Dimension of simulation')
-parser.add_argument('--sim', type=str, default='train0', help='Simulation type to generate. Check the available simulation lists in sim_list in data_generator.py.')
+parser.add_argument('--sim', type=str, default='spring_None', help='Simulation type to generate. Check the available simulation lists in sim_list in data_generator.py.')
 args = parser.parse_args()
 
 def main():
